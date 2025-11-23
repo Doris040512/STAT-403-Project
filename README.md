@@ -31,12 +31,12 @@ All results are implemented in **R**, and code is available in the project files
 I fit the model:
 
 log10(price) =
-    beta0
-+ beta1 * log10(sqft_living)
-+ beta2 * bedrooms
-+ beta3 * bathrooms
-+ beta4 * grade
-+ error
+    β₀
+  + β₁ * log10(sqft_living)
+  + β₂ * bedrooms
+  + β₃ * bathrooms
+  + β₄ * grade
+  + ε
 
 Key findings:
 
