@@ -96,8 +96,6 @@ To produce **distribution-free prediction intervals**, I implemented **Jackknife
 ├── guess.dat # Test-set MSE and coverage summary
 └── README.md # This file
 
-yaml
-复制代码
 
 ---
 
