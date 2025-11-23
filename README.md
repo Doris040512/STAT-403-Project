@@ -30,13 +30,13 @@ All results are implemented in **R**, and code is available in the project files
 
 I fit the model:
 
-$\log_{10}(\text{price}) 
-= \beta_0 
-+ \beta_1 \log_{10}(\text{sqft\_living})
-+ \beta_2 \text{bedrooms}
-+ \beta_3 \text{bathrooms}
-+ \beta_4 \text{grade}
-+ \varepsilon$
+log10(price) =
+    beta0
+  + beta1 * log10(sqft_living)
+  + beta2 * bedrooms
+  + beta3 * bathrooms
+  + beta4 * grade
+  + error
 
 Key findings:
 
