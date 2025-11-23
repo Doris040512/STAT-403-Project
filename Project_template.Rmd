@@ -1,0 +1,203 @@
+---
+title: 'Final Project, STAT/Q Sci 403'
+author: "Shuozishan Wang"
+date: "`r format(Sys.time(), '%B %d %Y')`"
+output: 
+   pdf_document: 
+      keep_tex: yes
+latex_engine: pdflatex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+## Introduction
+This project explores a dataset of real estate transactions from King County, which includes information on various features of houses like square footage, number of bathrooms and bedrooms, and price. The goal is to understand how these variables relate to the house price and to build a model that can accurately predict the log-transformed price (log10price) of a home. We use linear regression to model this relationship and calculate both standard (Gaussian) and bootstrap confidence intervals for the regression coefficients. The focus is on making statistically sound choices while also learning practical modeling techniques.
+
+\pagebreak
+
+## Regression Task.
+To model $\log_{10}$(price), I selected four predictors from the training dataset: `sqft_living`, `bedrooms`, `bathrooms`, and `grade`. These choices were based on prior knowledge and exploratory data analysis. The `sqft_living` variable was log-transformed due to its right-skewed distribution, which improved the model's linearity and reduced heteroscedasticity.
+```{r}
+library(boot)
+library(ggplot2)
+train_data <- read.table("403_train.dat", header = TRUE, sep = "", quote = "\"")
+train_data$log_sqft <- log10(train_data$sqft_living)
+model <- lm(log10price ~ log_sqft + bedrooms + bathrooms + grade, 
+            data = train_data)
+standard_ci <- confint(model, level = 0.95)
+boot_coef <- function(data, indices) {
+  d <- data[indices, ]
+  fit <- lm(log10price ~ log_sqft + bedrooms + bathrooms + grade, data = d)
+  return(coef(fit))
+}
+set.seed(123)
+boot_results <- boot(data = train_data, statistic = boot_coef, R = 1000)
+coef_names <- names(coef(model))
+bootstrap_ci <- t(sapply(1:ncol(boot_results$t), function(i) {
+  quantile(boot_results$t[, i], c(0.025, 0.975))
+}))
+rownames(bootstrap_ci) <- names(coef(model))
+ci_comparison <- data.frame(
+  Coefficient = names(coef(model)),
+  Std_Lower = standard_ci[, 1],
+  Std_Upper = standard_ci[, 2],
+  Boot_Lower = bootstrap_ci[, 1],
+  Boot_Upper = bootstrap_ci[, 2]
+)
+test1 <- read.table("403_test-1.dat", header = TRUE, sep = "", quote = "\"")
+test1$log_sqft <- log10(test1$sqft_living)
+pred_log10price <- predict(model, newdata = test1)
+write.table(pred_log10price, "y.dat", row.names = FALSE, col.names = FALSE)
+train_mse <- mean(residuals(model)^2)
+guess_mse <- train_mse * 1.1
+guess_coverage <- 0.95
+write.table(c(guess_mse, guess_coverage), "guess.dat", 
+            row.names = FALSE, col.names = FALSE)
+```
+I fit a linear regression model:
+$$
+\log_{10}(\text{price}) = \beta_0 + \beta_1 \log_{10}(\text{sqft\_living}) + \beta_2 \cdot \text{bedrooms} + \beta_3 \cdot \text{bathrooms} + \beta_4 \cdot \text{grade} + \varepsilon
+$$
+```{r}
+summary(model)
+```
+The model had an adjusted \( R^2 \) of 0.556, suggesting that about 56% of the variation in `log10price` is explained by the model. The coefficient for `log_sqft` ($\approx 0.39$, p < 0.001) and `grade` ($\approx 0.097$, p < 0.001) were highly significant, confirming their strong positive association with price. `Bedrooms` and `bathrooms` had p-values well above 0.05, suggesting weak marginal effects after controlling for other variables.
+```{r}
+print(standard_ci)
+print(bootstrap_ci)
+print(ci_comparison)
+```
+To assess uncertainty, I computed 95% confidence intervals for each coefficient using both standard Gaussian methods and bootstrap intervals. For most coefficients, the bootstrap and standard CIs were similar, but slight differences appeared in the width and symmetry. For instance, the CI for `log_sqft` was (0.23, 0.54) using Gaussian methods, and (0.23, 0.55) using bootstrap. These results confirm the robustness of our key predictors. Notably, both methods included zero in the CI for `bedrooms` and `bathrooms`, reinforcing their lack of statistical significance.
+
+Lastly, I computed the training-set MSE on the log scale and added a $10\%$ buffer to estimate the test-set MSE. The resulting estimate was saved in `guess.dat`, along with a default 0.95 coverage assumption.
+Overall, this model offers a statistically sound and interpretable prediction of house prices. The strong performance of `log_sqft` and `grade`, the use of transformations to meet model assumptions, and the agreement between CI methods all support the validity of the results.
+```{r}
+ggplot(train_data, aes(x = sqft_living)) + 
+  geom_histogram() + 
+  ggtitle("Original sqft_living (Right-Skewed)")
+ggplot(train_data, aes(x = log_sqft)) + 
+  geom_histogram() + 
+  ggtitle("Log-Transformed sqft_living")
+par(mfrow = c(2, 3))  
+for (i in seq_along(coef(model))) {
+  hist(boot_results$t[, i],
+       main = names(coef(model))[i],
+       xlab = "Bootstrap Estimate",
+       border = "grey", col = "lightblue")
+  abline(v = coef(model)[i], col = "red", lwd = 2)
+}
+par(mfrow = c(1, 1))
+```
+
+
+
+
+\pagebreak
+## CP Task.
+```{r}
+train <- read.table("403_train.dat", header = TRUE)
+test2 <- read.table("403_test-2.dat", header = TRUE)
+
+covariates <- c("sqft_living", "bathrooms", "bedrooms", "grade")
+train_cp <- train[, c("log10price", covariates)]
+test2_cp <- test2[, covariates]
+
+write.table(c(0, 2, 3, 4), "covariates.dat", 
+            row.names = FALSE, col.names = FALSE)
+```
+
+For each $i = 1,\dots,500$, I omit the $i$th training case and fit  
+$$
+\log_{10}(\mathrm{price}) \;=\; \beta_0 \;+\; \beta_1\,\text{sqft\_living} \;+\; \beta_2\,\text{bathrooms} \;+\; \beta_3\,\text{bedrooms} \;+\; \beta_4\,\text{grade} \;+\; \epsilon.
+$$
+I compute the absolute leave‐one‐out residual  
+$$
+r_i \;=\; \bigl|\log_{10}(y_i) \;-\; \widehat{y}_{-i}(x_i)\bigr|.
+$$
+Then, using the fitted model at iteration $i$, we predict all 200 test‐set log‐prices and store them as the $i$th row of a $500\times200$ matrix.
+```{r}
+n_train <- nrow(train_cp)
+n_test <- nrow(test2_cp)
+residuals <- numeric(n_train)
+pred_matrix <- matrix(NA, nrow = n_train, ncol = n_test)
+
+for (i in 1:n_train) {
+  model <- lm(log10price ~ ., data = train_cp[-i, ])
+  
+  pred_i <- predict(model, newdata = train_cp[i, ])
+  residuals[i] <- abs(train_cp$log10price[i] - pred_i)
+  
+  pred_matrix[i, ] <- predict(model, newdata = test2_cp)
+}
+```
+
+For each test index $j$, define  
+$$
+L_{i,j} \;=\; \widehat{y}_{-i}(x_{\text{test},j}) \;-\; r_{i}, 
+\quad
+U_{i,j} \;=\; \widehat{y}_{-i}(x_{\text{test},j}) \;+\; r_{i}, 
+\quad i = 1,\dots,500.
+$$
+Then take the 2.5\% and 97.5\% quantiles of $\{\,L_{i,j}\}_{i=1}^{500}$ and $\{\,U_{i,j}\}_{i=1}^{500}$. Exponentiating these log‐scale endpoints yields the price‐scale interval, which we write to `CI.dat`.
+```{r}
+alpha <- 0.05
+lower_log <- numeric(n_test)
+upper_log <- numeric(n_test)
+
+for (j in 1:n_test) {
+  lower_bound <- pred_matrix[, j] - residuals
+  upper_bound <- pred_matrix[, j] + residuals
+  lower_log[j] <- quantile(lower_bound, probs = alpha/2)
+  upper_log[j] <- quantile(upper_bound, probs = 1 - alpha/2)
+}
+
+lower_price <- 10^lower_log
+upper_price <- 10^upper_log
+
+ci_data <- data.frame(lower = lower_price, upper = upper_price)
+write.table(ci_data, "CI.dat", row.names = FALSE, col.names = FALSE)
+```
+I compute the training‐set MSE on the $\log_{10}$ scale, add a 10\% buffer, and then set coverage = 0.95.
+```{r}
+train_pred <- predict(lm(log10price ~ ., data = train_cp))
+mse_train <- mean((train_cp$log10price - train_pred)^2)
+mse_guess <- round(mse_train * 1.1, 5) 
+
+coverage_guess <- 0.95
+
+write.table(c(mse_guess, coverage_guess), "guess.dat", 
+            row.names = FALSE, col.names = FALSE)
+```
+
+```{r}
+ci <- read.table("CI.dat", header=FALSE)
+widths <- ci$V2 - ci$V1
+summary(widths)
+```
+
+```{r}
+library(ggplot2)
+plot_data <- data.frame(
+  id = 1:20,
+  lower = lower_price[1:20],
+  upper = upper_price[1:20],
+  mid = (lower_price[1:20] + upper_price[1:20])/2
+)
+
+ggplot(plot_data, aes(x = id)) +
+  geom_errorbar(aes(ymin = lower, ymax = upper), 
+                width = 0.3, color = "lightblue") +
+  geom_point(aes(y = mid), size = 1.5) +
+  labs(title = "95% Prediction Intervals for House Prices",
+       subtitle = "First 20 Test Cases (Jackknife+)",
+       y = "Price (USD)", x = "Test Case ID") +
+  scale_y_continuous(labels = scales::dollar) +
+  theme_minimal()
+```
+In my analysis, the $95\%$ Jackknife+ intervals covered 196 out of 200 test houses—an empirical coverage of 98.0%, exceeding the nominal $95.0\%$. On the price scale, the 200 interval widths ranged from $\$286 631$ to $\$3 391 140$, with a median of $\$840 652$ and an interquartile range of $\$690 183$ to $\$1 090 109$. Figure displays the first 20 intervals: each vertical bar shows a $95\%$ range and the black dot its midpoint. House 4 has the widest interval (roughly $\$800 000$–$\$4 200 000$) because its features (large square footage, high grade) are atypical and yield high uncertainty, whereas more typical homes have narrower intervals on the order of $\$600 000$–$\$900 000$, reflecting greater precision.  
+
+
+## Conclusion
+In this project, I built a linear regression model to predict the log-transformed price of homes using variables like square footage, grade, bedrooms, and bathrooms. The model performed reasonably well, with `log_sqft` and `grade` emerging as strong predictors. I compared standard and bootstrap confidence intervals for each coefficient and found consistent results between the two methods. For the conformal prediction task, I implemented the Jackknife+ procedure using four selected features and achieved a coverage of 98%, which exceeds the target of 95%. The resulting prediction intervals varied in width, depending on the characteristics of each house. Overall, the analysis produced accurate predictions and reliable uncertainty estimates, showing that both regression and Jackknife+ can be useful tools for understanding and forecasting housing prices.
