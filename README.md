@@ -30,15 +30,13 @@ All results are implemented in **R**, and code is available in the project files
 
 I fit the model:
 
-\[
-\log_{10}(\text{price}) 
+$\log_{10}(\text{price}) 
 = \beta_0 
-+ \beta_1 \log_{10}(\text{sqft\_living}) 
-+ \beta_2 \text{bedrooms} 
-+ \beta_3 \text{bathrooms} 
++ \beta_1 \log_{10}(\text{sqft\_living})
++ \beta_2 \text{bedrooms}
++ \beta_3 \text{bathrooms}
 + \beta_4 \text{grade}
-+ \varepsilon
-\]
++ \varepsilon$
 
 Key findings:
 
@@ -89,12 +87,12 @@ To produce **distribution-free prediction intervals**, I implemented **Jackknife
 
 ## 📁 File Structure
 
-├── 403_final_report.pdf # Full project write-up
-├── code/ # R scripts for regression, bootstrap, Jackknife+
-├── data/ # Training and test datasets
-├── CI.dat # Jackknife+ interval outputs
-├── guess.dat # Test-set MSE and coverage summary
-└── README.md # This file
+- 403_final_report.pdf # Full project write-up
+- code/ # R scripts for regression, bootstrap, Jackknife+
+- data/ # Training and test datasets
+- CI.dat # Jackknife+ interval outputs
+- guess.dat # Test-set MSE and coverage summary
+- README.md # This file
 
 
 ---
