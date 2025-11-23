@@ -88,7 +88,7 @@ To produce **distribution-free prediction intervals**, I implemented **Jackknife
 ## 📁 File Structure
 
 - 403_final_report.pdf # Full project write-up
-- code/ # R scripts for regression, bootstrap, Jackknife+
+- Project_template.Rmd/ # R scripts for regression, bootstrap, Jackknife+
 - data/ # Training and test datasets
 - CI.dat # Jackknife+ interval outputs
 - guess.dat # Test-set MSE and coverage summary
