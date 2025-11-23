@@ -32,11 +32,11 @@ I fit the model:
 
 log10(price) =
     beta0
-  + beta1 * log10(sqft_living)
-  + beta2 * bedrooms
-  + beta3 * bathrooms
-  + beta4 * grade
-  + error
++ beta1 * log10(sqft_living)
++ beta2 * bedrooms
++ beta3 * bathrooms
++ beta4 * grade
++ error
 
 Key findings:
 
